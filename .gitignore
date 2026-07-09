@@ -3,7 +3,6 @@ __pycache__/
 *.pyc
 .pytest_cache/
 logs/
-*.txt
+latest-rates-message.txt
 .env
-config.yaml
 .DS_Store

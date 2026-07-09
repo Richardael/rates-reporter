@@ -5,8 +5,10 @@ import logging
 import os
 import subprocess
 import sys
+import threading
 import time
 from datetime import datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytz
 from dotenv import load_dotenv
@@ -25,6 +27,7 @@ TIMEZONE = os.environ.get("TIMEZONE", "America/Caracas")
 TARGET_HOUR = int(os.environ.get("TARGET_HOUR", "9"))
 TARGET_MINUTE = int(os.environ.get("TARGET_MINUTE", "0"))
 CHECK_INTERVAL = int(os.environ.get("CHECK_INTERVAL", "30"))
+HEALTH_PORT = int(os.environ.get("HEALTH_PORT", "8080"))
 
 
 def should_run(hour: int, minute: int) -> bool:
@@ -50,10 +53,34 @@ def run_reporter() -> bool:
     return success
 
 
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/health":
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"ok")
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def log_message(self, format, *args):
+        pass
+
+
+def start_health_server(port: int) -> None:
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    logger.info(f"Health check escuchando en puerto {port}")
+    server.serve_forever()
+
+
 def main() -> None:
     tz = pytz.timezone(TIMEZONE)
     logger.info(f"Scheduler iniciado. Se ejecutara a las {TARGET_HOUR:02d}:{TARGET_MINUTE:02d} ({TIMEZONE})")
     logger.info(f"Revisando cada {CHECK_INTERVAL} segundos...")
+
+    health_thread = threading.Thread(target=start_health_server, args=(HEALTH_PORT,), daemon=True)
+    health_thread.start()
 
     last_run_date = None
 
