@@ -9,18 +9,21 @@ output:
 callmebot:
   enabled: true
   recipients:
-    # - name: "Chayan"
-    #   phone_env: "RATES_PHONE_CHAYAN"
-    #   apikey_env: "RATES_APIKEY_CHAYAN"
+    - name: "Chayan"
+      phone_env: "RATES_PHONE_CHAYAN"
+      apikey_env: "RATES_APIKEY_CHAYAN"
     - name: "Richard"
       phone_env: "RATES_PHONE_RICHARD"
       apikey_env: "RATES_APIKEY_RICHARD"
-    # - name: "Mariu"
-    #   phone_env: "RATES_PHONE_MARIU"
-    #   apikey_env: "RATES_APIKEY_MARIU"
-    # - name: "Tahi"
-    #   phone_env: "RATES_PHONE_TAHI"
-    #   apikey_env: "RATES_APIKEY_TAHI"
+    - name: "Mariu"
+      phone_env: "RATES_PHONE_MARIU"
+      apikey_env: "RATES_APIKEY_MARIU"
+    - name: "Tahi"
+      phone_env: "RATES_PHONE_TAHI"
+      apikey_env: "RATES_APIKEY_TAHI"
+    - name: "Paola"
+      phone_env: "RATES_PHONE_PAOLA"
+      apikey_env: "RATES_APIKEY_PAOLA"
 
 rates:
   bcv_usd:
