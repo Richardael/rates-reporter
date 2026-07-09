@@ -9,11 +9,16 @@ output:
 callmebot:
   enabled: false
   recipients: []
-  # Formato:
+  # Formato con env vars (recomendado - sin secretos en YAML):
+  # recipients:
+  #   - name: "Persona"
+  #     phone_env: "RATES_PHONE_PERSONA"
+  #     apikey_env: "RATES_APIKEY_PERSONA"
+  # Formato directo (solo para desarrollo local):
   # recipients:
   #   - phone: "+584141234567"
   #     apikey: "1234567"
-  #     name: "Persona"     # opcional, para identificar en logs
+  #     name: "Persona"
 
 rates:
   bcv_usd:

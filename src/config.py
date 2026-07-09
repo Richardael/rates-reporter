@@ -130,10 +130,13 @@ def load_config(config_path: str) -> AppConfig:
     for r_raw in callmebot_raw.get("recipients", []):
         if isinstance(r_raw, dict):
             phone = str(r_raw.get("phone", ""))
+            phone_env = r_raw.get("phone_env", "")
+            if phone_env:
+                phone = os.getenv(phone_env, phone)
             apikey = str(r_raw.get("apikey", ""))
             apikey_env = r_raw.get("apikey_env", "")
             if apikey_env:
-                apikey = os.getenv(apikey_env, "")
+                apikey = os.getenv(apikey_env, apikey)
             recipients.append(CallMeBotRecipient(phone=phone, apikey=apikey, name=str(r_raw.get("name", ""))))
         elif isinstance(r_raw, str) and r_raw:
             recipients.append(CallMeBotRecipient(phone=r_raw))
