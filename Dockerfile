@@ -1,6 +1,17 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
 ENV CONFIG_PATH=/app/config.yaml
 ENV TZ=America/Caracas
 ENV TARGET_HOUR=9
 ENV TARGET_MINUTE=0
 ENV CHECK_INTERVAL=30
 ENV HEALTH_PORT=8080
+
+CMD ["python", "scheduler.py"]
