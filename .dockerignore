@@ -1,0 +1,12 @@
+.venv
+.git
+__pycache__
+*.pyc
+.pytest_cache
+logs
+*.txt
+.env.example
+config.example.yaml
+.ssh
+Dockerfile
+.dockerignore

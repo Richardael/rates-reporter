@@ -1,0 +1,50 @@
+timezone: "America/Caracas"
+round_decimals: 2
+
+output:
+  print_console: true
+  save_to_file: true
+  output_file: "latest-rates-message.txt"
+
+callmebot:
+  enabled: false
+  recipients: []
+  # Formato:
+  # recipients:
+  #   - phone: "+584141234567"
+  #     apikey: "1234567"
+  #     name: "Persona"     # opcional, para identificar en logs
+
+rates:
+  bcv_usd:
+    enabled: true
+    label: "BCV USD"
+    provider: "dolarapi_usd_official"
+    adjustments:
+      percent_subtract: 0.0
+      fixed_subtract_bs: 0.0
+
+  bcv_eur:
+    enabled: true
+    label: "BCV EUR"
+    provider: "dolarapi_eur_official"
+    adjustments:
+      percent_subtract: 0.0
+      fixed_subtract_bs: 0.0
+
+  binance_usdt:
+    enabled: true
+    label: "Binance USDT"
+    provider: "binance_p2p"
+    fallback_manual_rate: null
+    binance:
+      asset: "USDT"
+      fiat: "VES"
+      trade_type: "SELL"
+      rows: 10
+      pay_types: []
+      aggregation: "median"
+      merchant_check: false
+    adjustments:
+      percent_subtract: 0.2
+      fixed_subtract_bs: 10.0
