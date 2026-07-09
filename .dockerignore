@@ -4,9 +4,9 @@ __pycache__
 *.pyc
 .pytest_cache
 logs
-*.txt
+latest-rates-message.txt
+.env
 .env.example
-config.example.yaml
 .ssh
 Dockerfile
 .dockerignore
