@@ -28,6 +28,7 @@ TARGET_HOUR = int(os.environ.get("TARGET_HOUR", "9"))
 TARGET_MINUTE = int(os.environ.get("TARGET_MINUTE", "0"))
 CHECK_INTERVAL = int(os.environ.get("CHECK_INTERVAL", "30"))
 HEALTH_PORT = int(os.environ.get("HEALTH_PORT", "8080"))
+RUN_ON_STARTUP = os.environ.get("RUN_ON_STARTUP", "false").lower() == "true"
 
 
 def should_run(hour: int, minute: int) -> bool:
@@ -81,6 +82,11 @@ def main() -> None:
 
     health_thread = threading.Thread(target=start_health_server, args=(HEALTH_PORT,), daemon=True)
     health_thread.start()
+
+    if RUN_ON_STARTUP:
+        logger.info("RUN_ON_STARTUP=true — ejecutando reporter de arranque...")
+        time.sleep(3)
+        run_reporter()
 
     last_run_date = None
 
