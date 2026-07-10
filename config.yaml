@@ -24,6 +24,12 @@ callmebot:
     - name: "Paola"
       phone_env: "RATES_PHONE_PAOLA"
       apikey_env: "RATES_APIKEY_PAOLA"
+    - name: "Irene"
+      phone_env: "RATES_PHONE_IRENE"
+      apikey_env: "RATES_APIKEY_IRENE"
+    - name: "Sabrina"
+      phone_env: "RATES_PHONE_SABRINA"
+      apikey_env: "RATES_APIKEY_SABRINA"
 
 rates:
   bcv_usd:
