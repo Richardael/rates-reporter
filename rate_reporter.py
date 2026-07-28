@@ -8,7 +8,7 @@ Uso:
 import argparse
 import logging
 import sys
-from typing import List
+from typing import List, Optional
 
 from src.adjustments import apply_adjustments
 from src.callmebot import send_whatsapp_message
@@ -142,12 +142,22 @@ def run(config_path: str) -> int:
 
     rate_keys = ["bcv_usd", "bcv_eur", "binance_usdt"]
     results: List[RateResult] = []
+    eur_base_rate: Optional[float] = None
 
     for key in rate_keys:
         rate_cfg = config.get_rate_config(key)
         if rate_cfg is None or not rate_cfg.enabled:
             continue
         result = fetch_rate(config, key, logger)
+
+        if key == "bcv_eur" and result.available:
+            eur_base_rate = result.base_rate
+
+        if key == "binance_usdt" and eur_base_rate is not None and result.available:
+            if eur_base_rate >= result.base_rate:
+                result.adjusted_rate = result.base_rate
+                result.rule_description = "Sin ajuste (EUR >= Binance)"
+
         results.append(result)
 
     message = format_message(results, timezone=config.timezone)
