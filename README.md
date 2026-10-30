@@ -146,3 +146,27 @@ pytest tests/ -v
 - Configurar `fallback_manual_rate` en `binance_usdt` para tener una tasa de respaldo si Binance no responde.
 - Usar `trade_type: SELL` para referencia de compra de USDT con VES. Cambiar a `BUY` si se necesita la referencia inversa.
 - La API de DolarAPI es publica pero esta sujeta a disponibilidad del proveedor externo.
+
+## Sincronizacion con Odoo (`odoo_sync.py`)
+
+Servicio aparte del reporter de WhatsApp: consulta las 4 tasas y las carga en Odoo.
+
+| Tasa | Fuente | Destino en Odoo |
+|---|---|---|
+| BCV USD | bcv.org.ve (respaldo: DolarAPI) | tasa contable de VEF (o de USD en empresas en bolivares) + tabla "Tasas de cambio" |
+| BCV EUR | bcv.org.ve (respaldo: DolarAPI) | tasa contable de EUR + tabla "Tasas de cambio" |
+| Binance compra | Binance P2P USDT/VES BUY, mediana de 10 anuncios | tabla "Tasas de cambio" |
+| Binance venta | Binance P2P USDT/VES SELL, mediana de 10 anuncios | tabla "Tasas de cambio" |
+
+- Las tasas contables llevan la **fecha valor** del BCV y se escriben en todas las empresas, sobrescribiendo la del mismo dia.
+- La tabla es el modelo `x_tasa_cambio` (Contabilidad > Configuracion > Contabilidad > Tasas de cambio): una fila por ejecucion.
+- bcv.org.ve no envia su certificado intermedio correcto; se verifica con `certs/sectigo-public-server-authentication-ca-dv-r36.pem` + raices de certifi.
+
+Variables: `ODOO_BASE_URL`, `ODOO_DATABASE`, `ODOO_API_KEY`, `ODOO_SYNC_TIMES` (por defecto `09:00,17:00`), `TIMEZONE`, `RUN_ON_STARTUP`.
+
+```bash
+python odoo_sync.py --dry-run   # consulta y muestra lo que escribiria
+python odoo_sync.py             # escribe en Odoo
+```
+
+En Coolify corre como app `odoo-rates-sync` con `Dockerfile.odoo` (scheduler `odoo_scheduler.py`, todos los dias a las horas de `ODOO_SYNC_TIMES`).

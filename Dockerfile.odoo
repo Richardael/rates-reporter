@@ -1,0 +1,16 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV TZ=America/Caracas
+ENV TIMEZONE=America/Caracas
+ENV ODOO_SYNC_TIMES=09:00,17:00
+ENV CHECK_INTERVAL=30
+ENV HEALTH_PORT=8080
+
+CMD ["python", "odoo_scheduler.py"]
