@@ -71,3 +71,11 @@ def fetch_eur_official(timeout: int = REQUEST_TIMEOUT, max_retries: int = 2) -> 
         )
 
     raise ValueError(f"DolarAPI EUR: respuesta inesperada: {data}")
+
+
+def fetch_official_history(currency: str, timeout: int = REQUEST_TIMEOUT, max_retries: int = 2) -> dict:
+    """Historico oficial BCV de DolarAPI: {fecha valor 'YYYY-MM-DD': tasa Bs}. currency = 'dolares' o 'euros'."""
+    data = _do_get(f"{DOLARAPI_BASE}/historicos/{currency}/oficial", timeout=timeout, max_retries=max_retries)
+    if not isinstance(data, list):
+        raise ValueError(f"DolarAPI historico {currency}: respuesta inesperada: {data}")
+    return {str(entry["fecha"])[:10]: float(entry["promedio"]) for entry in data if entry.get("promedio")}

@@ -170,3 +170,12 @@ python odoo_sync.py             # escribe en Odoo
 ```
 
 En Coolify corre como app `odoo-rates-sync` con `Dockerfile.odoo` (scheduler `odoo_scheduler.py`, todos los dias a las horas de `ODOO_SYNC_TIMES`).
+
+### Carga historica (`odoo_backfill.py`)
+
+```bash
+python odoo_backfill.py 2026-10-01 2026-10-29 [--dry-run]
+```
+
+Toma el historico oficial BCV (USD y EUR) de DolarAPI y lo escribe igual que `odoo_sync.py`, una fila por fecha valor
+en `x_tasa_cambio` (sin Binance: el P2P no tiene historico). No duplica filas de fechas ya cargadas.
