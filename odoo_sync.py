@@ -2,18 +2,21 @@
 """Carga en Odoo las tasas BCV USD, BCV EUR y Binance P2P (compra y venta).
 
 - Registra una fila en el modelo x_tasa_cambio ("Tasas de cambio") con las 4 tasas.
-- Escribe las tasas BCV como tasas contables (res.currency.rate) en todas las empresas,
-  con fecha = fecha valor del BCV, sobrescribiendo la que exista ese dia.
+- Escribe las tasas contables (res.currency.rate) en todas las empresas activas, sobrescribiendo la del mismo dia:
+  - por defecto, BCV USD/EUR con fecha = fecha valor del BCV;
+  - en las empresas de BINANCE_RATE_COMPANY_IDS, el bolivar a Binance compra con fecha = hoy (hora Venezuela);
+    el EUR mantiene la relacion EUR/USD del BCV. La ultima ejecucion del dia deja la tasa del dia.
 
-Variables de entorno: ODOO_BASE_URL, ODOO_DATABASE, ODOO_API_KEY, TIMEZONE (America/Caracas).
+Variables de entorno: ODOO_BASE_URL, ODOO_DATABASE, ODOO_API_KEY, TIMEZONE (America/Caracas),
+BINANCE_RATE_COMPANY_IDS (ids separados por coma; vacio = todas con BCV).
 Uso: python odoo_sync.py [--dry-run]
 """
 
 import argparse
 import os
 import sys
-from datetime import datetime, timezone
-from typing import Dict, Optional
+from datetime import date, datetime, timezone
+from typing import Dict, Optional, Tuple
 
 import pytz
 from dotenv import load_dotenv
@@ -27,6 +30,7 @@ load_dotenv()
 TIMEZONE = os.environ.get("TIMEZONE", "America/Caracas")
 BCV_CURRENCY = "VEF"  # En esta base el bolivar es la moneda "VEF" (Bolivar Soberano)
 ALL_COMPANIES_CONTEXT = {"active_test": False}
+BINANCE_RATE_COMPANY_IDS = {int(x) for x in os.environ.get("BINANCE_RATE_COMPANY_IDS", "").split(",") if x.strip()}
 
 logger = setup_logger("odoo_sync")
 
@@ -45,16 +49,33 @@ def fetch_binance(trade_type: str) -> Optional[float]:
         return None
 
 
-def upsert_rates(odoo: OdooClient, rates: bcv.BcvRates, dry_run: bool) -> list:
+def rate_plan(company_id: int, bcv_rates: Optional[bcv.BcvRates], compra: Optional[float], today: date) -> Optional[Tuple[str, Dict[str, float]]]:
+    """Fecha y Bs por unidad de cada moneda que se usan como tasa contable de la empresa (None si no hay tasa)."""
+    if company_id in BINANCE_RATE_COMPANY_IDS:
+        if not compra:
+            return None
+        bs_per = {BCV_CURRENCY: 1.0, "USD": compra}
+        if bcv_rates:
+            bs_per["EUR"] = compra * bcv_rates.eur / bcv_rates.usd  # EUR/USD del BCV
+        return today.isoformat(), bs_per
+    if not bcv_rates:
+        return None
+    return bcv_rates.fecha_valor.isoformat(), {BCV_CURRENCY: 1.0, "USD": bcv_rates.usd, "EUR": bcv_rates.eur}
+
+
+def upsert_rates(odoo: OdooClient, bcv_rates: Optional[bcv.BcvRates], compra: Optional[float], today: date, dry_run: bool) -> list:
     notes = []
-    bs_per = {BCV_CURRENCY: 1.0, "USD": rates.usd, "EUR": rates.eur}
-    currencies = {c["name"]: c["id"] for c in odoo.search_read("res.currency", [["name", "in", list(bs_per)]], ["name"], ALL_COMPANIES_CONTEXT)}
+    currencies = {c["name"]: c["id"] for c in odoo.search_read("res.currency", [["name", "in", [BCV_CURRENCY, "USD", "EUR"]]], ["name"], ALL_COMPANIES_CONTEXT)}
     # Solo empresas activas: Odoo rechaza escribir con una empresa archivada en allowed_company_ids.
     companies = odoo.search_read("res.company", [["active", "=", True]], ["name", "currency_id"], ALL_COMPANIES_CONTEXT)
-    day = rates.fecha_valor.isoformat()
 
     for company in companies:
         company_currency = company["currency_id"][1]
+        plan = rate_plan(company["id"], bcv_rates, compra, today)
+        if plan is None:
+            notes.append(f"{company['name']}: sin tasa ({'Binance' if company['id'] in BINANCE_RATE_COMPANY_IDS else 'BCV'} no disponible), se mantiene la anterior")
+            continue
+        day, bs_per = plan
         if company_currency not in bs_per:
             notes.append(f"{company['name']}: moneda {company_currency} no soportada, omitida")
             continue
@@ -64,19 +85,21 @@ def upsert_rates(odoo: OdooClient, rates: bcv.BcvRates, dry_run: bool) -> list:
             if not currency_id:
                 notes.append(f"moneda {currency} no existe en Odoo")
                 continue
+            # En empresas a Binance, las tasas con fecha posterior (fecha valor BCV adelantada) tambien se igualan
+            op = ">=" if company["id"] in BINANCE_RATE_COMPANY_IDS else "="
             existing = odoo.search_read(
                 "res.currency.rate",
-                [["currency_id", "=", currency_id], ["company_id", "=", company["id"]], ["name", "=", day]],
-                ["company_rate"],
+                [["currency_id", "=", currency_id], ["company_id", "=", company["id"]], ["name", op, day]],
+                ["name", "company_rate"],
                 context,
             )
-            action = "actualiza" if existing else "crea"
-            logger.info(f"{company['name']}: {action} {currency} {day} = {value:.8f}")
+            same_day = [r for r in existing if r["name"] == day]
+            logger.info(f"{company['name']}: {'actualiza' if same_day else 'crea'} {currency} {day} = {value:.8f}")
             if dry_run:
                 continue
             if existing:
-                odoo.write("res.currency.rate", [existing[0]["id"]], {"company_rate": value}, context)
-            else:
+                odoo.write("res.currency.rate", [r["id"] for r in existing], {"company_rate": value}, context)
+            if not same_day:
                 odoo.create("res.currency.rate", {"currency_id": currency_id, "company_id": company["id"], "name": day, "company_rate": value}, context)
     return notes
 
@@ -103,8 +126,7 @@ def run(dry_run: bool) -> int:
     if compra is None or venta is None:
         notes.append("Binance P2P no disponible (ver log)")
 
-    if rates:
-        notes.extend(upsert_rates(odoo, rates, dry_run))
+    notes.extend(upsert_rates(odoo, rates, compra, now_local.date(), dry_run))
 
     row = {
         "x_name": now_local.strftime("%Y-%m-%d %H:%M"),

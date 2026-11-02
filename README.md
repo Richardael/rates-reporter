@@ -153,16 +153,17 @@ Servicio aparte del reporter de WhatsApp: consulta las 4 tasas y las carga en Od
 
 | Tasa | Fuente | Destino en Odoo |
 |---|---|---|
-| BCV USD | bcv.org.ve (respaldo: DolarAPI) | tasa contable de VEF (o de USD en empresas en bolivares) + tabla "Tasas de cambio" |
+| BCV USD | bcv.org.ve (respaldo: DolarAPI) | tasa contable de VEF (o de USD en empresas en bolivares), salvo en las empresas a Binance + tabla "Tasas de cambio" |
 | BCV EUR | bcv.org.ve (respaldo: DolarAPI) | tasa contable de EUR + tabla "Tasas de cambio" |
-| Binance compra | Binance P2P USDT/VES BUY, mediana de 10 anuncios | tabla "Tasas de cambio" |
+| Binance compra | Binance P2P USDT/VES BUY, mediana de 10 anuncios | tasa contable de VEF en las empresas de `BINANCE_RATE_COMPANY_IDS` + tabla "Tasas de cambio" |
 | Binance venta | Binance P2P USDT/VES SELL, mediana de 10 anuncios | tabla "Tasas de cambio" |
 
-- Las tasas contables llevan la **fecha valor** del BCV y se escriben en todas las empresas, sobrescribiendo la del mismo dia.
+- Las tasas contables BCV llevan la **fecha valor** del BCV y se escriben en todas las empresas activas, sobrescribiendo la del mismo dia.
+- En las empresas de `BINANCE_RATE_COMPANY_IDS` (Garmont 33 y Constructora 32 desde el 2-nov-2026) el bolivar va a **Binance compra** con fecha de hoy; la ultima ejecucion del dia (17:00) deja la tasa del dia. El EUR conserva la relacion EUR/USD del BCV. Si Binance no responde, se mantiene la tasa anterior.
 - La tabla es el modelo `x_tasa_cambio` (Contabilidad > Configuracion > Contabilidad > Tasas de cambio): una fila por ejecucion.
 - bcv.org.ve no envia su certificado intermedio correcto; se verifica con `certs/sectigo-public-server-authentication-ca-dv-r36.pem` + raices de certifi.
 
-Variables: `ODOO_BASE_URL`, `ODOO_DATABASE`, `ODOO_API_KEY`, `ODOO_SYNC_TIMES` (por defecto `09:00,17:00`), `TIMEZONE`, `RUN_ON_STARTUP`.
+Variables: `ODOO_BASE_URL`, `ODOO_DATABASE`, `ODOO_API_KEY`, `ODOO_SYNC_TIMES` (por defecto `09:00,17:00`), `TIMEZONE`, `RUN_ON_STARTUP`, `BINANCE_RATE_COMPANY_IDS` (ids separados por coma).
 
 ```bash
 python odoo_sync.py --dry-run   # consulta y muestra lo que escribiria

@@ -2,8 +2,9 @@ from datetime import date
 
 import pytest
 
-from odoo_sync import company_rates
-from src.providers.bcv import parse_bcv_html
+import odoo_sync
+from odoo_sync import company_rates, rate_plan
+from src.providers.bcv import BcvRates, parse_bcv_html
 
 
 BCV_SNIPPET = """
@@ -47,3 +48,32 @@ class TestCompanyRates:
         rates = company_rates(self.bs_per, "VEF")
         assert rates["USD"] == pytest.approx(1 / 889.2553)
         assert rates["EUR"] == pytest.approx(1 / 992.80018713)
+
+
+class TestRatePlan:
+    bcv = BcvRates(usd=889.5754, eur=1000.0, fecha_valor=date(2026, 11, 3), fuente="bcv.org.ve")
+    today = date(2026, 11, 2)
+
+    @pytest.fixture(autouse=True)
+    def binance_companies(self, monkeypatch):
+        monkeypatch.setattr(odoo_sync, "BINANCE_RATE_COMPANY_IDS", {32, 33})
+
+    def test_bcv_company_uses_value_date(self):
+        day, bs_per = rate_plan(30, self.bcv, 995.35, self.today)
+        assert day == "2026-11-03"
+        assert bs_per["USD"] == 889.5754
+
+    def test_binance_company_uses_today_and_buy_rate(self):
+        day, bs_per = rate_plan(33, self.bcv, 995.35, self.today)
+        assert day == "2026-11-02"
+        rates = company_rates(bs_per, "USD")
+        assert rates["VEF"] == pytest.approx(995.35)
+        assert rates["EUR"] == pytest.approx(889.5754 / 1000.0)  # EUR/USD del BCV
+
+    def test_binance_company_without_bcv_still_gets_vef(self):
+        _, bs_per = rate_plan(32, None, 995.35, self.today)
+        assert company_rates(bs_per, "USD") == {"VEF": pytest.approx(995.35)}
+
+    def test_missing_source_returns_none(self):
+        assert rate_plan(33, self.bcv, None, self.today) is None
+        assert rate_plan(30, None, 995.35, self.today) is None
