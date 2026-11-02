@@ -49,7 +49,8 @@ def upsert_rates(odoo: OdooClient, rates: bcv.BcvRates, dry_run: bool) -> list:
     notes = []
     bs_per = {BCV_CURRENCY: 1.0, "USD": rates.usd, "EUR": rates.eur}
     currencies = {c["name"]: c["id"] for c in odoo.search_read("res.currency", [["name", "in", list(bs_per)]], ["name"], ALL_COMPANIES_CONTEXT)}
-    companies = odoo.search_read("res.company", [], ["name", "currency_id"], ALL_COMPANIES_CONTEXT)
+    # Solo empresas activas: Odoo rechaza escribir con una empresa archivada en allowed_company_ids.
+    companies = odoo.search_read("res.company", [["active", "=", True]], ["name", "currency_id"], ALL_COMPANIES_CONTEXT)
     day = rates.fecha_valor.isoformat()
 
     for company in companies:
